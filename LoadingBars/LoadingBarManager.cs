@@ -2,65 +2,48 @@
 using LevelGeneration;
 using SNetwork;
 using System;
-using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using Il2Collections = Il2CppSystem.Collections.Generic;
 
 namespace LoadingBars
 {
-    public class LoadingBarManager
+    public static class LoadingBarManager
     {
-        public static readonly LoadingBarManager Current = new();
-
-        private ulong _localLookup = 0;
-        private PlayerLoadingState _localState = new();
-        public PlayerLoadingState LocalState => _localState;
+        private static PlayerLoadingState _localState = new();
+        public static PlayerLoadingState LocalState => _localState;
 
         public static event Action<ulong, PlayerLoadingState>? OnPlayerUpdate = null;
         public static event Action<SNet_Player>? OnAddPlayer = null;
         public static event Action<SNet_Player>? OnRemovePlayer = null;
 
-        private readonly Dictionary<ulong, PlayerLoadingState> _syncedStates = new();
-        public static bool TryGetSyncedState(ulong lookup, [MaybeNullWhen(false)] out PlayerLoadingState state) => Current._syncedStates.TryGetValue(lookup, out state);
-
-        private Il2Collections.Queue<LG_FactoryJob>? _currentQueue;
+        private static Il2Collections.Queue<LG_FactoryJob>? _currentQueue;
 
         internal static void Init()
         {
-            LevelAPI.OnBuildStart += Current.OnBuildStart;
-            LevelAPI.OnBuildDone += Current.OnBuildDone;
+            LevelAPI.OnBuildStart += OnBuildStart;
+            LevelAPI.OnBuildDone += OnBuildDone;
+            LoadingBarNetwork.ModInfo.OnPlayerModSet += OnPlayerModSet;
+            LoadingBarNetwork.ModInfo.OnPlayerLeft += RemovePlayer;
         }
 
-        internal static void Clear()
-        {
-            Current._syncedStates.Clear();
-            Current._localLookup = 0;
-        }
-
-        internal void ResetPlayers()
+        internal static void ResetPlayers()
         {
             OnRemovePlayer?.Invoke(SNet.LocalPlayer);
             OnAddPlayer?.Invoke(SNet.LocalPlayer);
 
-            foreach (ulong lookup in _syncedStates.Keys)
+            foreach (var player in LoadingBarNetwork.ModInfo.OtherPlayers)
             {
-                if (SNet.TryGetPlayer(lookup, out var player))
-                {
-                    OnRemovePlayer?.Invoke(player);
-                    OnAddPlayer?.Invoke(player);
-                }
+                OnRemovePlayer?.Invoke(player);
+                OnAddPlayer?.Invoke(player);
             }
         }
 
-        private void OnBuildStart()
+        private static void OnBuildStart()
         {
-            foreach (var state in _syncedStates.Values)
-                state.Reset();
             _localState.Reset();
             _currentQueue = null;
         }
 
-        private void OnBuildDone()
+        private static void OnBuildDone()
         {
             _currentQueue = null;
             _localState.IsDone = true;
@@ -68,35 +51,23 @@ namespace LoadingBars
             LoadingBarNetwork.SendUpdate(_localState);
         }
 
-        internal static void OnAddPlayer_Internal(SNet_Player player)
+        private static void OnPlayerModSet(SNet_Player player, bool hasMod)
         {
-            PlayerLoadingState state = new();
-            if (player.IsLocal)
-            {
-                if (player.Lookup != Current._localLookup)
-                {
-                    Current._localLookup = player.Lookup;
-                    OnAddPlayer?.Invoke(player);
-                }
-            }
-            else if (Current._syncedStates.TryAdd(player.Lookup, state))
-                OnAddPlayer?.Invoke(player);
+            if (hasMod)
+                AddPlayer(player);
+            else
+                RemovePlayer(player);
         }
 
-        internal static void OnRemovePlayer_Internal(SNet_Player player)
-        {
-            if (Current._syncedStates.Remove(player.Lookup))
-                OnRemovePlayer?.Invoke(player);
-        }
+        private static void AddPlayer(SNet_Player player) => OnAddPlayer?.Invoke(player);
+        private static void RemovePlayer(SNet_Player player) => OnRemovePlayer?.Invoke(player);
 
         internal static void OnSyncedUpdate_Internal(ulong lookup, PlayerLoadingState state)
         {
-            Current._syncedStates[lookup] = state;
             OnPlayerUpdate?.Invoke(lookup, state);
         }
 
-        internal static void OnBatchUpdate_Internal(LG_Factory factory) => Current.OnBatchUpdate_Instance(factory);
-        private void OnBatchUpdate_Instance(LG_Factory factory)
+        internal static void OnBatchUpdate_Internal(LG_Factory factory)
         {
             if (_localState.Batch != factory.m_batchStep)
             {

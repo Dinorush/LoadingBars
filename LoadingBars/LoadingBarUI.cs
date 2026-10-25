@@ -15,6 +15,7 @@ namespace LoadingBars
             LoadingBarManager.OnAddPlayer += RegisterPlayer;
             LoadingBarManager.OnRemovePlayer += OnPlayerLeave;
             LoadingBarManager.OnPlayerUpdate += OnPlayerUpdate;
+            LoadingBarNetwork.ModInfo.OnLobbyLeft += Clear;
         }
         private static readonly string m_prefabPath = "CM_TimedButton";
         public static void RegisterPlayer(SNet_Player player)
@@ -107,10 +108,9 @@ namespace LoadingBars
 
         public static void OnPlayerLeave(ulong lookup)
         {
-            if (_playerBars.TryGetValue(lookup, out var bar))
+            if (_playerBars.Remove(lookup, out var bar))
             {
                 bar.Destroy();
-                _playerBars.Remove(lookup);
             }
         }
 

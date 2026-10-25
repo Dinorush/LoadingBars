@@ -30,5 +30,6 @@
 	<!-- Plugins -->
 	<ItemGroup>
 		<Reference Include="$(PluginsFolder)/GTFO-API.dll" Private="false" />
+		<Reference Include="$(PluginsFolder)/**/OptionalNetworkAPI.dll" Private="false" />
 	</ItemGroup>
 </Project>

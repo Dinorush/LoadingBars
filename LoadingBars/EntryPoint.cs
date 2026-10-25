@@ -4,7 +4,8 @@ using HarmonyLib;
 
 namespace LoadingBars
 {
-    [BepInPlugin("Dinorush." + MODNAME, MODNAME, "1.0.0")]
+    [BepInPlugin("Dinorush." + MODNAME, MODNAME, "1.1.0")]
+    [BepInDependency("Dinorush.OptionalNetworkAPI", BepInDependency.DependencyFlags.HardDependency)]
     internal sealed class EntryPoint : BasePlugin
     {
         public const string MODNAME = "LoadingBars";

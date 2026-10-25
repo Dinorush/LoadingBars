@@ -1,6 +1,5 @@
 ﻿using HarmonyLib;
 using LevelGeneration;
-using SNetwork;
 
 namespace LoadingBars
 {
@@ -15,29 +14,6 @@ namespace LoadingBars
                 LoadingBarManager.OnBatchUpdate_Internal(__instance);
         }
 
-        [HarmonyPatch(typeof(SNet_SessionHub), nameof(SNet_SessionHub.AddPlayerToSession))]
-        [HarmonyPostfix]
-        private static void Post_AddPlayer(SNet_Player player)
-        {
-            LoadingBarNetwork.OnAddPlayer(player);
-        }
-
-        [HarmonyPatch(typeof(SNet_SessionHub), nameof(SNet_SessionHub.OnLeftLobby))]
-        [HarmonyPostfix]
-        private static void Post_RemovePlayer(SNet_Player player)
-        {
-            LoadingBarNetwork.OnRemovePlayer(player);
-        }
-
-        [HarmonyPatch(typeof(SNet_SessionHub), nameof(SNet_SessionHub.LeaveHub))]
-        [HarmonyPostfix]
-        private static void Post_LeaveHub()
-        {
-            LoadingBarNetwork.Clear();
-            LoadingBarManager.Clear();
-            LoadingBarUI.Clear();
-        }
-
         // Reset the nav marker layer when returning to lobby, to help ensure that retiring and returning after expedition function
         [HarmonyPatch(typeof(GameStateManager), nameof(GameStateManager.ChangeState))]
         [HarmonyPostfix]
@@ -45,7 +21,7 @@ namespace LoadingBars
         {
             if (nextState == eGameStateName.Lobby)
             {
-                LoadingBarManager.Current.ResetPlayers();
+                LoadingBarManager.ResetPlayers();
                 GuiManager.NavMarkerLayer.SetVisible(false);
             }
         }
@@ -83,7 +59,5 @@ namespace LoadingBars
                     return true;
             }
         }
-
-
     }
 }
